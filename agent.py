@@ -5,6 +5,8 @@ from random import random, randint
 
 import numpy as np
 
+from ag import Agent
+
 N_GAME_TRY = 10000
 EPOCH_PER_STEP = 1
 
@@ -98,24 +100,44 @@ def game_dq(qa, qb, n_test):
     env.close()
 
 
-def make_model():
-    model = Sequential()
+def game_hcl():
+    agent = Agent()
 
-    model.add(Dense(256, input_dim=100, activation='relu'))
-    model.add(Dense(64, activation='relu'))
-    model.add(Dense(4))
+    for epoch in range(1000):
+        # train
+        for n_train in range(200):
+            print(f"********{epoch}-{n_train}********")
+            obs = env.reset()
+            env.render()
+            done = False
+            episode_buff = []
+            while not done:
+                agent.train()
 
-    model.compile(loss="mean_squared_error", optimizer='adam', metrics=['accuracy'])
+                n_obs = obs.reshape(1, 10, 10, 1)
+                action = agent.action(n_obs)
+                obs, reward, done = env.step(action)
 
-    return model
+                if not done:
+                    n_obs = obs.reshape(10, 10, 1)
+                    step_buff = agent.add_buffer(n_obs, action, reward)
+                    episode_buff.append(step_buff)
+
+                env.render()
+            if len(episode_buff) > 3 and False:
+                agent.make_fake_states(episode_buff)
+            env.close()
+
+        # test
+        for n_test in range(10):
+            pass
+
+        agent.update_target()
 
 
 # r* landa * max(Q(s+1))
 def main():
-    qa = make_model()
-    qb = make_model()
-    for n_test in range(N_GAME_TRY):
-        game_dq(qa, qb, n_test)
+    game_hcl()
 
 
 if __name__ == '__main__':
